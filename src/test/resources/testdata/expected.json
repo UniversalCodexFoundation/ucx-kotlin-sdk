@@ -1,0 +1,68 @@
+{
+  "_comment": "UCX SDK 一致性测试的期望值（Conformance fixtures）。由 ucx 0.4.0-alpha.2 生成。所有 SDK 应能解析/验证/解密下列夹具并断言这些值。",
+  "generated_by": "ucx 0.4.0-alpha.2",
+  "files": {
+    "sample.ucx": "明文 UCX 归档（未签名、未加密）",
+    "sample-signed.ucx": "经 Ed25519 双层签名（签名者 AUTHOR）的 UCX 归档",
+    "plain-aesgcm.ucxe": "plain.txt → AES-256-GCM，直接密钥模式",
+    "plain-chacha.ucxe": "plain.txt → ChaCha20-Poly1305，直接密钥模式",
+    "plain-pass.ucxe": "plain.txt → AES-256-GCM，Argon2id 口令模式",
+    "author.cert.pem": "签名者 AUTHOR 的自签名 X.509 证书",
+    "author.key.pub": "签名者 AUTHOR 的 Ed25519 公钥（PEM）",
+    "plain.txt": "各 .ucxe 夹具对应的参考明文"
+  },
+  "mimetype": {
+    "value": "application/vnd.unicodex+zip",
+    "exact_bytes": 28,
+    "trailing_newline": false,
+    "note": "ZIP 第一个条目，必须 STORED（不压缩）"
+  },
+  "archive": {
+    "ucx_id": "urn:ucx:fe944340-2d18-4346-ba19-f291e7b00604",
+    "title": "Sample Novel",
+    "author": "UCX Team",
+    "language": "en",
+    "created": "2026-05-30",
+    "hash_algorithm": "BLAKE3",
+    "manifest_digest_encoding": "base64",
+    "chapters": [
+      { "title": "第一章", "file": "chapter-001.md" }
+    ],
+    "manifest_entries": [
+      { "name": "metadata/codex.json", "size": 389, "blake3_base64": "hDx0KxVez4D1mSuDWyGrug4FintPE+zAcxN9ZGAtDmk=" },
+      { "name": "content/struct.json", "size": 176, "blake3_base64": "NZokBync5cVIXOs1YtWSFD1OrKktFyN8n4z1tFywbw4=" },
+      { "name": "content/chapter-001.md", "size": 60, "blake3_base64": "fhpVdCxGpYGmRtOeHHj/rx5e9OYP9FCtRfWPX7oTv/I=" }
+    ],
+    "manifest_excluded": ["mimetype", "META-INF/MANIFEST.MF", "META-INF/signatures/*", "META-INF/certs/*"],
+    "chapter_content": {
+      "content/chapter-001.md": "# Chapter One\n\nThe quick brown fox jumps over the lazy dog.\n"
+    }
+  },
+  "signature": {
+    "file": "sample-signed.ucx",
+    "signer_id": "AUTHOR",
+    "subject_cn": "UCX Sample Signer",
+    "cert_type": "self-signed",
+    "fingerprint_sha256": "c7eda2f7b775e395c583c220ff171a7b22c1c0ce3c887b9a3db3d74c944219d0",
+    "algorithm": "Ed25519",
+    "signature_files": [
+      "META-INF/signatures/AUTHOR.SF",
+      "META-INF/signatures/AUTHOR.EC",
+      "META-INF/certs/AUTHOR.cert.pem"
+    ],
+    "expected_result": "VERIFIED",
+    "expected_layer1": true,
+    "expected_layer2": true
+  },
+  "decryption": {
+    "plaintext": "The quick brown fox jumps over the lazy dog.\n",
+    "plaintext_size": 45,
+    "direct_key_base64": "MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=",
+    "direct_key_note": "32 字节密钥 = ASCII '0123456789abcdef0123456789abcdef'",
+    "cases": [
+      { "file": "plain-aesgcm.ucxe", "algorithm": "AES-256-GCM", "mode": "direct-key" },
+      { "file": "plain-chacha.ucxe", "algorithm": "ChaCha20-Poly1305", "mode": "direct-key" },
+      { "file": "plain-pass.ucxe", "algorithm": "AES-256-GCM", "mode": "passphrase", "kdf": "argon2id", "passphrase": "sdktest-passphrase" }
+    ]
+  }
+}

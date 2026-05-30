@@ -1,0 +1,8 @@
+# Gradle / Kotlin 构建产物（可由 ./gradlew test 重新生成，不纳入版本管理）
+/build/
+/.gradle/
+
+# 本地 IDE 配置
+/.idea/
+*.iml
+/.kotlin/
