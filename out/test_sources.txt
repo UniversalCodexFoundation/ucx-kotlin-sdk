@@ -1,1 +1,0 @@
-"G:\OpencodeProjects\DanMoNovel\Unicodex\sdk\kotlin\src\test\kotlin\org\unicodex\ucx\ConformanceTest.kt"
