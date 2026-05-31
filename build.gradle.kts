@@ -10,7 +10,7 @@
 //   - BouncyCastle ：BLAKE3、Ed25519、Argon2id、ChaCha20-Poly1305、X.509/PEM
 //   - JCE（JDK 内置）：AES-GCM、AES-CBC、HMAC-SHA256、PBKDF2
 //
-// 许可证：MIT OR Apache-2.0（与父项目 Unicodex 一致）。
+// 许可证：MIT（与父项目 Unicodex 一致）。
 
 plugins {
     // Kotlin/JVM 插件——提供 Kotlin 编译能力。

@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * Symmetric.kt —— 对称解密原语（UCX-FORMAT §7.5、§7.6、§7.7、§7.9）。
  *

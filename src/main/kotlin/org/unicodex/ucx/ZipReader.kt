@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * ZipReader.kt —— UCX 容器（ZIP）读取（UCX-FORMAT §1、§2）。
  *

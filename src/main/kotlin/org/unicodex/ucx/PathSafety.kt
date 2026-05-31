@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * PathSafety.kt -- Zip-Slip 路径安全验证（UCX-FORMAT.md Security Requirements, item 3）。
  *

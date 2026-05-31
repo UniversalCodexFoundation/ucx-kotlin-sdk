@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * ByteIO.kt —— 字节序与缓冲读取工具（UCXE / Layer2 解析用）。
  *

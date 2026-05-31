@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * UcxArchive.kt —— UCX 归档句柄与只读阅读器入口（SDK-API.md §4）。
  *

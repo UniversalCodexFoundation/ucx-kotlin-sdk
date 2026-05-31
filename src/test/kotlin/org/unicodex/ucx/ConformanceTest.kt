@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * ConformanceTest.kt —— SDK-API.md §8 一致性测试 T1–T10。
  *

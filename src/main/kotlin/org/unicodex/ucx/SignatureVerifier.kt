@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * SignatureVerifier.kt —— 双层 Ed25519 签名验证（UCX-FORMAT §6）。
  *

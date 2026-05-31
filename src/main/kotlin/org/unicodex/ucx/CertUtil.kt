@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * CertUtil.kt —— X.509 证书 / Ed25519 / PEM 辅助（UCX-FORMAT §6.3）。
  *

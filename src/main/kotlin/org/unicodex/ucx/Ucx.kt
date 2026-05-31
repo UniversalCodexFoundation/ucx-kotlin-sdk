@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * Ucx.kt —— SDK 顶层门面（SDK-API.md §4 的整洁入口）。
  *

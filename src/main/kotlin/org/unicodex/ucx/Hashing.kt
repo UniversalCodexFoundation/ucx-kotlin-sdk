@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * Hashing.kt —— BLAKE3 与 Base64 工具（UCX-FORMAT §5、§3.2）。
  *

@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * ManifestParser.kt —— META-INF/MANIFEST.MF 文本解析（UCX-FORMAT §3）。
  *

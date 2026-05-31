@@ -9,7 +9,7 @@
 本 SDK 遵循 [`sdk/UCX-FORMAT.md`](../UCX-FORMAT.md)（字节级 wire-format）与 [`sdk/SDK-API.md`](../SDK-API.md)（跨语言统一 API 契约）。
 
 - 包 / 命名空间：`org.unicodex.ucx`
-- 许可证：**MIT OR Apache-2.0**
+- 许可证：**MIT**
 - 能力等级：**L3（全功能）**
 
 ---

@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * Json.kt —— codex.json / struct.json 的 JSON 反序列化（UCX-FORMAT §4）。
  *

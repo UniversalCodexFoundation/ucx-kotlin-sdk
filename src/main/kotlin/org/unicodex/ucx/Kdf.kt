@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * Kdf.kt —— 口令密钥派生（UCX-FORMAT §8）。
  *

@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * UcxeCrypto.kt —— UCXE 解密（UCX-FORMAT §7、§8）。
  *

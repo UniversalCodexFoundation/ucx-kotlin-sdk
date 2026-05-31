@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * Errors.kt —— Unicodex UCX 错误模型（SDK-API.md §5）。
  *

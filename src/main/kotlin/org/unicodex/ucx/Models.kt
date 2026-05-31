@@ -1,5 +1,5 @@
 /*
- * SPDX-License-Identifier: MIT OR Apache-2.0
+ * SPDX-License-Identifier: MIT
  *
  * Models.kt —— Unicodex UCX 数据模型（SDK-API.md §3）。
  *
