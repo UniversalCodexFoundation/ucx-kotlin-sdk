@@ -104,7 +104,8 @@ internal object Symmetric {
         val fileAad = header.aeadAad()
         val cur = ByteCursor(header.ciphertext)
         val chunkCount = cur.u32le()
-        if (chunkCount < 0 || chunkCount > Int.MAX_VALUE.toLong()) {
+        // 分块数上界校验：防止恶意输入导致 DoS（硬上限 16M 块 = 16 TiB @ 1 MiB/chunk）。
+        if (chunkCount < 0 || chunkCount > UcxConstants.MAX_CHUNK_COUNT) {
             throw IllegalStateException("invalid chunk count")
         }
         // (anti-truncation) chunk_aad = file_aad || u32_le(chunk_count)
@@ -178,8 +179,21 @@ internal object Symmetric {
      * 长度不等时 diff 预设为非零，但仍完成遍历以保持常量时间特性。
      * 参考 Rust 参考实现：使用 subtle::ConstantTimeEq，不因长度差异提前返回。
      */
-    private fun constantTimeEquals(a: ByteArray, b: ByteArray): Boolean {
-        // 长度不等时将 diff 预设为非零，但仍完成遍历。
+    private fun constantTimeEquals(a: ByteArray, b: ByteArray): Boolean =
+        CryptoUtil.constantTimeEquals(a, b)
+}
+
+/**
+ * 密码学工具函数，供多个模块共享（Symmetric / SignatureVerifier / UcxArchive）。
+ */
+internal object CryptoUtil {
+
+    /**
+     * 常量时间字节数组比较，避免时间侧信道泄露。
+     *
+     * 长度不等时 diff 预设为非零，但仍完成遍历以保持常量时间特性。
+     */
+    fun constantTimeEquals(a: ByteArray, b: ByteArray): Boolean {
         var diff = a.size xor b.size
         val minLen = minOf(a.size, b.size)
         for (i in 0 until minLen) {
@@ -187,4 +201,13 @@ internal object Symmetric {
         }
         return diff == 0
     }
+
+    /**
+     * 常量时间字符串比较，避免时间侧信道泄露。
+     *
+     * 将两个字符串转为 UTF-8 字节后使用常量时间字节比较。
+     * 用于 BLAKE3 摘要的 Base64 字符串比对等场景。
+     */
+    fun constantTimeEquals(a: String, b: String): Boolean =
+        constantTimeEquals(a.toByteArray(Charsets.UTF_8), b.toByteArray(Charsets.UTF_8))
 }

@@ -98,7 +98,8 @@ class UcxArchive internal constructor(
         for (entry in manifest.entries) {
             val bytes = zip.read(entry.name)
             val actual = if (bytes == null) "" else Hashing.blake3Base64(bytes)
-            val valid = bytes != null && actual == entry.digest
+            // 使用常量时间比较，防止时间侧信道泄露摘要内容。
+            val valid = bytes != null && CryptoUtil.constantTimeEquals(actual, entry.digest)
             if (!valid) allValid = false
             entries.add(
                 IntegrityEntry(

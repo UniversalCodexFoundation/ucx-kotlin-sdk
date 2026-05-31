@@ -51,8 +51,9 @@ internal object Kdf {
                 require(
                     spec.timeCost in UcxConstants.ARGON2_MIN_TIME..UcxConstants.ARGON2_MAX_TIME
                 ) { "argon2 time out of range" }
+                // parallelism 上界 255：参考 Argon2 C 库 uint8 限制。
                 require(
-                    spec.parallelism >= UcxConstants.ARGON2_MIN_PARALLELISM
+                    spec.parallelism in UcxConstants.ARGON2_MIN_PARALLELISM..UcxConstants.ARGON2_MAX_PARALLELISM
                 ) { "argon2 parallelism out of range" }
             }
             is KdfSpec.Pbkdf2 -> {

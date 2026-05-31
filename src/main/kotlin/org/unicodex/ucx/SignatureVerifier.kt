@@ -129,9 +129,10 @@ internal object SignatureVerifier {
             val ecBytes = zip.read("$SIG_DIR$signerId.EC") ?: return false
 
             // 步骤 2：SF 的 BLAKE3-Digest-Manifest 必须等于 Base64(BLAKE3(manifest))。
+            // 使用常量时间比较，防止时间侧信道泄露摘要内容。
             val sfAttrs = parseSfMainHeaders(sfBytes)
             val sfManifestDigest = sfAttrs["BLAKE3-Digest-Manifest"] ?: return false
-            val digestMatches = sfManifestDigest == manifestDigestB64
+            val digestMatches = CryptoUtil.constantTimeEquals(sfManifestDigest, manifestDigestB64)
 
             // 步骤 3：解析 .EC blob，验证 Ed25519 over 原始 .SF 字节。
             val ec = parseEcBlob(ecBytes) ?: return false
@@ -236,7 +237,8 @@ internal object SignatureVerifier {
 
             var allValid = parsed.isNotEmpty()
             for (entry in parsed) {
-                val digestMatches = entry.digest.contentEquals(recomputed)
+                // 使用常量时间比较，防止时间侧信道泄露摘要内容。
+                val digestMatches = CryptoUtil.constantTimeEquals(entry.digest, recomputed)
                 // Ed25519 over signed_data（用 public_key；签名块内嵌 raw 公钥）。
                 val sigValid =
                     CertUtil.verifyEd25519(entry.publicKey, entry.signedData, entry.signature)
@@ -404,6 +406,10 @@ internal object SignatureVerifier {
             val cur = ByteCursor(block)
             cur.u64le() // 起始 size_of_block（已在 locateBlock 校验，忽略）
             val pairSize = cur.u64le()
+            // pairSize 下界校验：至少包含 4 字节的 pair_id，否则减法下溢。
+            if (pairSize < 4) return null
+            // pairSize 上界校验：防止 u64 转 Int 时溢出（Long -> Int 截断）。
+            if (pairSize > Int.MAX_VALUE.toLong()) return null
             val pairId = cur.u32le()
             if (pairId != UcxConstants.L2_PAIR_ID) return null
             // signers_data 长度 = pairSize - 4。
