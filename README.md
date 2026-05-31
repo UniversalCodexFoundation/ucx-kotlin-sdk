@@ -1,3 +1,5 @@
+[English](README_en.md) | 中文
+
 # Unicodex UCX SDK — Kotlin / JVM
 
 > 统一标准小说文件格式 `.ucx` 的 **只读阅读器** SDK（Kotlin / JVM 实现）。
