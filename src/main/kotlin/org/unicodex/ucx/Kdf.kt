@@ -19,8 +19,6 @@ package org.unicodex.ucx
 import org.bouncycastle.crypto.generators.Argon2BytesGenerator
 import org.bouncycastle.crypto.params.Argon2Parameters
 import java.text.Normalizer
-import javax.crypto.SecretKeyFactory
-import javax.crypto.spec.PBEKeySpec
 
 /** 解析出的 KDF 描述（id + 参数）。 */
 internal sealed class KdfSpec {
@@ -78,6 +76,7 @@ internal object Kdf {
         val normalized = Normalizer.normalize(passphrase, Normalizer.Form.NFC)
         val pwBytes = normalized.toByteArray(Charsets.UTF_8)
 
+        try {
         return when (spec) {
             is KdfSpec.None ->
                 throw IllegalArgumentException("KDF=None has no passphrase derivation")
@@ -98,16 +97,26 @@ internal object Kdf {
             }
 
             is KdfSpec.Pbkdf2 -> {
-                // JDK 的 PBKDF2WithHmacSHA256；keyLength 以 bit 计。
-                val spec2 = PBEKeySpec(
-                    normalized.toCharArray(),
-                    salt,
-                    spec.iterations.toInt(),
-                    outLen * 8,
+                // (P0 critical fix) JDK 的 PBKDF2WithHmacSHA256 将 char[] 按 ISO-8859-1
+                // 风格取每个字符的低 8 位作为字节，与参考实现要求的 UTF-8 编码不一致。
+                // 对于非 ASCII 密码短语（中文、日文、emoji 等），JDK 会产生错误的密钥，
+                // 导致无法解密其他 SDK 加密的文件。
+                //
+                // 改用 BouncyCastle 的 PKCS5S2ParametersGenerator 直接传入 UTF-8 字节，
+                // 与 Java SDK 的 bcPbkdf2() 方法完全一致。
+                // 参考：Java SDK Kdf.java bcPbkdf2() 方法。
+                val gen = org.bouncycastle.crypto.generators.PKCS5S2ParametersGenerator(
+                    org.bouncycastle.crypto.digests.SHA256Digest()
                 )
-                val skf = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256")
-                skf.generateSecret(spec2).encoded
+                gen.init(pwBytes, salt, spec.iterations.toInt())
+                val kp = gen.generateDerivedParameters(outLen * 8)
+                        as org.bouncycastle.crypto.params.KeyParameter
+                kp.key
             }
+        }
+        } finally {
+            // (P1 安全) best-effort 清零口令字节，减少敏感数据在内存中的驻留时间。
+            pwBytes.fill(0)
         }
     }
 }

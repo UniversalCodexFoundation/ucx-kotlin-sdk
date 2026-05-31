@@ -91,18 +91,25 @@ internal object Symmetric {
      *
      * header.iv = 12 字节 base nonce；header.ciphertext = 序列化 chunk 流：
      *   [chunk_count:u32 LE] 后跟 chunk_count 个 [size:u32 LE][ct][tag:16]。
-     * 每块 nonce = base[0..8] ‖ u32_be(index)；AAD 与文件级 AAD 相同（§7.6）。
+     * 每块 nonce = base[0..8] ‖ u32_be(index)；
+     * AAD = file_aad ‖ u32_le(chunk_count)（anti-truncation，§7.6/§7.7）。
+     *
+     * chunk_count 被追加到 AAD 中，以防止截断攻击：攻击者无法在不破坏 AEAD 认证
+     * 的情况下修改分块总数。参考 Rust ucx-crypto/src/chunked.rs:135-140 build_chunk_aad()。
      */
     fun decryptChunkedAead(header: UcxeHeader, key: ByteArray): ByteArray {
         if (header.iv.size != UcxConstants.AEAD_NONCE_LEN) {
             throw IllegalStateException("chunked base nonce must be 12 bytes")
         }
-        val aad = header.aeadAad()
+        val fileAad = header.aeadAad()
         val cur = ByteCursor(header.ciphertext)
         val chunkCount = cur.u32le()
         if (chunkCount < 0 || chunkCount > Int.MAX_VALUE.toLong()) {
             throw IllegalStateException("invalid chunk count")
         }
+        // (anti-truncation) chunk_aad = file_aad || u32_le(chunk_count)
+        // 将 chunk_count 的 4 字节小端表示追加到文件级 AAD，使 AEAD 认证绑定总分块数。
+        val chunkAad = fileAad + ByteIO.u32leBytes(chunkCount)
         val baseHi = header.iv.copyOfRange(0, 8) // 前 8 字节
         val out = java.io.ByteArrayOutputStream()
         for (i in 0 until chunkCount) {
@@ -115,9 +122,9 @@ internal object Symmetric {
             // 子 nonce = base[0..8] ‖ u32_be(index)
             val nonce = baseHi + ByteIO.u32beBytes(i)
             val plain = when (header.algoId) {
-                UcxConstants.ALGO_AES_256_GCM -> aesGcmDecrypt(key, nonce, ct, tag, aad)
+                UcxConstants.ALGO_AES_256_GCM -> aesGcmDecrypt(key, nonce, ct, tag, chunkAad)
                 UcxConstants.ALGO_CHACHA20_POLY1305 ->
-                    chacha20Poly1305Decrypt(key, nonce, ct, tag, aad)
+                    chacha20Poly1305Decrypt(key, nonce, ct, tag, chunkAad)
                 else -> throw IllegalStateException("chunked supports AEAD only")
             }
             out.write(plain)
@@ -164,11 +171,18 @@ internal object Symmetric {
         return cipher.doFinal(header.ciphertext)
     }
 
-    /** 常量时间字节数组比较，避免时间侧信道。 */
+    /**
+     * 常量时间字节数组比较，避免时间侧信道。
+     *
+     * 即使长度不同也必须迭代较短长度的全部字节，避免因提前返回泄露长度信息。
+     * 长度不等时 diff 预设为非零，但仍完成遍历以保持常量时间特性。
+     * 参考 Rust 参考实现：使用 subtle::ConstantTimeEq，不因长度差异提前返回。
+     */
     private fun constantTimeEquals(a: ByteArray, b: ByteArray): Boolean {
-        if (a.size != b.size) return false
-        var diff = 0
-        for (i in a.indices) {
+        // 长度不等时将 diff 预设为非零，但仍完成遍历。
+        var diff = a.size xor b.size
+        val minLen = minOf(a.size, b.size)
+        for (i in 0 until minLen) {
             diff = diff or (a[i].toInt() xor b[i].toInt())
         }
         return diff == 0

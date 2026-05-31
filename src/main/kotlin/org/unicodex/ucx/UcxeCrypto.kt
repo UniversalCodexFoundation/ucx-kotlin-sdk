@@ -79,20 +79,28 @@ object UcxeCrypto {
      */
     @JvmStatic
     fun decryptWithKey(ucxe: ByteArray, key: ByteArray): ByteArray {
-        return runOpaque {
-            val header = parse(ucxe)
-            // 直接密钥模式要求 KDF=None。
-            if (header.kdfId != UcxConstants.KDF_NONE) {
-                throw IllegalStateException("direct-key decrypt requires KDF=None")
+        // 复制密钥以避免修改调用方的数组，解密后清零副本。
+        var keyCopy: ByteArray? = null
+        try {
+            return runOpaque {
+                val header = parse(ucxe)
+                // 直接密钥模式要求 KDF=None。
+                if (header.kdfId != UcxConstants.KDF_NONE) {
+                    throw IllegalStateException("direct-key decrypt requires KDF=None")
+                }
+                if (key.size != 32) {
+                    throw IllegalStateException("direct key must be 32 bytes")
+                }
+                // AES-CBC 在直接密钥模式被拒（需要 64 字节 = enc+mac）。
+                if (header.algoId == UcxConstants.ALGO_AES_256_CBC) {
+                    throw IllegalStateException("AES-CBC not allowed in direct-key mode")
+                }
+                keyCopy = key.copyOf()
+                decryptWithRawKey(header, keyCopy!!)
             }
-            if (key.size != 32) {
-                throw IllegalStateException("direct key must be 32 bytes")
-            }
-            // AES-CBC 在直接密钥模式被拒（需要 64 字节 = enc+mac）。
-            if (header.algoId == UcxConstants.ALGO_AES_256_CBC) {
-                throw IllegalStateException("AES-CBC not allowed in direct-key mode")
-            }
-            decryptWithRawKey(header, key)
+        } finally {
+            // (P1 安全) best-effort 清零密钥材料，减少密钥在内存中的驻留时间。
+            keyCopy?.fill(0)
         }
     }
 
@@ -105,28 +113,38 @@ object UcxeCrypto {
      */
     @JvmStatic
     fun decryptWithPassphrase(ucxe: ByteArray, passphrase: String): ByteArray {
-        return runOpaque {
-            val header = parse(ucxe)
-            if (header.kdfId == UcxConstants.KDF_NONE) {
-                throw IllegalStateException("passphrase decrypt requires a KDF (not None)")
-            }
-            // (§7.8、§8.3) 解密路径要求 salt 恰好 16 字节。
-            if (header.salt.size != UcxConstants.SALT_LEN) {
-                throw IllegalStateException("salt must be exactly ${UcxConstants.SALT_LEN} bytes")
-            }
-            // 参数必须在解密前校验。
-            Kdf.validate(header.kdfSpec)
-            // 输出长度：AEAD 32；AES-CBC 64。
-            val outLen = if (header.algoId == UcxConstants.ALGO_AES_256_CBC) 64 else 32
-            val derived = Kdf.derive(header.kdfSpec, passphrase, header.salt, outLen)
-            when (header.algoId) {
-                UcxConstants.ALGO_AES_256_CBC -> {
-                    val encKey = derived.copyOfRange(0, 32)
-                    val macKey = derived.copyOfRange(32, 64)
-                    Symmetric.decryptCbc(header, encKey, macKey)
+        var derived: ByteArray? = null
+        var encKey: ByteArray? = null
+        var macKey: ByteArray? = null
+        try {
+            return runOpaque {
+                val header = parse(ucxe)
+                if (header.kdfId == UcxConstants.KDF_NONE) {
+                    throw IllegalStateException("passphrase decrypt requires a KDF (not None)")
                 }
-                else -> decryptWithRawKey(header, derived)
+                // (§7.8, §8.3) 解密路径要求 salt 恰好 16 字节。
+                if (header.salt.size != UcxConstants.SALT_LEN) {
+                    throw IllegalStateException("salt must be exactly ${UcxConstants.SALT_LEN} bytes")
+                }
+                // 参数必须在解密前校验。
+                Kdf.validate(header.kdfSpec)
+                // 输出长度：AEAD 32；AES-CBC 64。
+                val outLen = if (header.algoId == UcxConstants.ALGO_AES_256_CBC) 64 else 32
+                derived = Kdf.derive(header.kdfSpec, passphrase, header.salt, outLen)
+                when (header.algoId) {
+                    UcxConstants.ALGO_AES_256_CBC -> {
+                        encKey = derived!!.copyOfRange(0, 32)
+                        macKey = derived!!.copyOfRange(32, 64)
+                        Symmetric.decryptCbc(header, encKey!!, macKey!!)
+                    }
+                    else -> decryptWithRawKey(header, derived!!)
+                }
             }
+        } finally {
+            // (P1 安全) best-effort 清零派生密钥材料。
+            derived?.fill(0)
+            encKey?.fill(0)
+            macKey?.fill(0)
         }
     }
 
@@ -218,6 +236,12 @@ object UcxeCrypto {
         if (ctLen < 0 || ctLen > UcxConstants.MAX_CIPHERTEXT_LEN) {
             throw IllegalStateException("ciphertext length out of range")
         }
+        // (P2 安全) ctLen 是 u64，toInt() 在 >2GB 时会截断。
+        // 在 JVM 上单个 ByteArray 不能超过 Integer.MAX_VALUE 字节，
+        // 因此 ctLen > Int.MAX_VALUE 时直接拒绝以避免静默截断。
+        if (ctLen > Int.MAX_VALUE.toLong()) {
+            throw IllegalStateException("ciphertext length exceeds JVM array limit")
+        }
         // tag 长度由算法决定（§7.3/§7.5）。
         val tagLen = when (algoId) {
             UcxConstants.ALGO_AES_256_GCM -> UcxConstants.GCM_TAG_LEN
@@ -225,7 +249,7 @@ object UcxeCrypto {
             UcxConstants.ALGO_CHACHA20_POLY1305 -> UcxConstants.CHACHA_TAG_LEN
             else -> throw IllegalStateException("unreachable")
         }
-        // ct_len + tag_len 必须 ≤ 剩余。
+        // ct_len + tag_len 必须 <= 剩余。
         if (ctLen + tagLen > cur.remaining().toLong()) {
             throw IllegalStateException("ciphertext + tag exceeds buffer")
         }

@@ -18,6 +18,7 @@
 package org.unicodex.ucx
 
 import java.io.ByteArrayInputStream
+import java.util.zip.ZipEntry
 import java.util.zip.ZipInputStream
 
 /**
@@ -64,6 +65,8 @@ internal class ZipReader private constructor(
 
             val names = ArrayList<String>()
             val map = LinkedHashMap<String, ByteArray>()
+            // 记录第一个条目的压缩方法，用于 mimetype STORED 校验（§2.1）。
+            var firstEntryMethod: Int = -1
 
             try {
                 ZipInputStream(ByteArrayInputStream(data)).use { zis ->
@@ -72,7 +75,15 @@ internal class ZipReader private constructor(
                         // 目录条目无内容，跳过（UCX 不写目录条目，但稳妥起见）。
                         if (!entry.isDirectory) {
                             val name = entry.name
+                            // (Zip-Slip) 对每个条目名做路径安全验证，拒绝路径遍历、
+                            // 控制字符、Windows 保留设备名等恶意路径模式。
+                            // 参考 Rust ucx-types/src/path_safety.rs。
+                            PathSafety.validateSafePath(name)
                             val bytes = zis.readBytes()
+                            // 记录第一个条目的压缩方法。
+                            if (names.isEmpty()) {
+                                firstEntryMethod = entry.method
+                            }
                             names.add(name)
                             // 同名条目以首次出现为准（ZIP 理论上不应重名）。
                             map.putIfAbsent(name, bytes)
@@ -81,6 +92,9 @@ internal class ZipReader private constructor(
                         entry = zis.nextEntry
                     }
                 }
+            } catch (e: InvalidFormatException) {
+                // Zip-Slip 验证抛出的 InvalidFormatException 直接透传。
+                throw e
             } catch (e: Exception) {
                 throw ParseException("failed to read ZIP entries", e)
             }
@@ -93,6 +107,13 @@ internal class ZipReader private constructor(
             if (names[0] != "mimetype") {
                 throw InvalidFormatException(
                     "first ZIP entry must be 'mimetype', found '${names[0]}'"
+                )
+            }
+            // (P2 合规) mimetype 条目必须使用 STORED 压缩方式（ZipEntry.STORED == 0）。
+            // ZipInputStream 会透明解压，但规范要求 STORED 以便其他工具直接读取 mimetype 字节。
+            if (firstEntryMethod != ZipEntry.STORED) {
+                throw InvalidFormatException(
+                    "mimetype entry must use STORED compression (method 0), found method $firstEntryMethod"
                 )
             }
             val mimeBytes = map["mimetype"]

@@ -121,6 +121,9 @@ class ConformanceTest {
         )
         assertTrue(signer.layer1Valid)
         assertTrue(signer.layer2Valid)
+        // (P1) 断言 certType 字段与 expected.json 一致：样本签名者使用自签名证书。
+        assertEquals("self-signed", signer.certType,
+            "signer certType must be 'self-signed' per expected.json")
     }
 
     // =================================================================================
